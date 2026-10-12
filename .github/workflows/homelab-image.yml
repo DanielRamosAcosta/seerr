@@ -1,0 +1,46 @@
+name: Homelab image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [homelab-build]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push amd64 image to GHCR
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit timestamp
+        id: ts
+        run: echo "ts=$(git log -1 --pretty=%ct)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/danielramosacosta/seerr:oidc-pr2715
+          build-args: |
+            COMMIT_TAG=${{ github.sha }}
+            BUILD_VERSION=oidc-pr2715
+            SOURCE_DATE_EPOCH=${{ steps.ts.outputs.ts }}
+          provenance: false
