@@ -27,9 +27,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit timestamp
-        id: ts
-        run: echo "ts=$(git log -1 --pretty=%ct)" >> "$GITHUB_OUTPUT"
+      - name: Derive short sha and timestamp
+        id: meta
+        run: |
+          echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "ts=$(git log -1 --pretty=%ct)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -38,9 +40,11 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/danielramosacosta/seerr:oidc-pr2715
+          tags: |
+            ghcr.io/danielramosacosta/seerr:sha-${{ steps.meta.outputs.short }}
+            ghcr.io/danielramosacosta/seerr:oidc-pr2715
           build-args: |
             COMMIT_TAG=${{ github.sha }}
-            BUILD_VERSION=oidc-pr2715
-            SOURCE_DATE_EPOCH=${{ steps.ts.outputs.ts }}
+            BUILD_VERSION=sha-${{ steps.meta.outputs.short }}
+            SOURCE_DATE_EPOCH=${{ steps.meta.outputs.ts }}
           provenance: false
